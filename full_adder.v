@@ -16,7 +16,7 @@
 //Fuction: 设计一个全加器，并用该全加器实现4位串行进位加法器。
 //Improvement: Pro: 用七段数码管显示两个加数，按键显示相加的结果
 
-module full_adder(sum, cnt, rst, clk, show, calc, segdata1, segdata2, segled1, segled2);
+module full_adder(rst, clk, show, calc, sum, cnt, segdata, segled1, segled2);
 	input clk;
 	input rst;
 	input calc;
@@ -24,15 +24,17 @@ module full_adder(sum, cnt, rst, clk, show, calc, segdata1, segdata2, segled1, s
 	
 	//input [3:0] num1, num2;   //两个输入数
 	//数码管显示   
-	input [3:0] segdata1;     //第一个数码管对应十六进制数
-	input [3:0] segdata2;     //第二个数码管对应十六进制数
+	input [3:0] segdata;     //第一个数码管对应十六进制数
+	//input [3:0] segdata2;     //第二个数码管对应十六进制数
 	
 	wire [3:0] c_temp;
 	
 	
 	
 	output [3:0] sum;
-	output [3:0] cnt;
+	output  cnt;
+	
+	reg  c_in = 0;
 	output [8:0] segled1;
 	output [8:0] segled2;
 	
@@ -42,9 +44,10 @@ module full_adder(sum, cnt, rst, clk, show, calc, segdata1, segdata2, segled1, s
 	reg sega = 0;
 	reg segb = 0;
 	
-	integer i;
+	//integer i;
+	integer value=2;
 	
-	
+	add_4 digiadd (.a(sega), .b(segb), .c_in(c_in), .sum(sum), .c_out(cnt));
 //数码管显示模块	
 	initial
 	 begin
@@ -73,25 +76,30 @@ module full_adder(sum, cnt, rst, clk, show, calc, segdata1, segdata2, segled1, s
 	
 	always@(posedge clk or negedge rst or negedge calc or negedge show)
 		begin
-			if(!rst)
+			if(!show)
+				begin
+					if(value%2 == 0)
+					begin
+						sega <= segdata;
+						value <= value+1;
+					end
+					else
+					begin
+						segb <= segdata;
+						value <= value+1;
+					end
+				end	
+		
+			else if(!calc)
+				begin
+					sega <= cnt;//输出计算结果
+					segb <= sum;
+				end
+			else if(!rst)
 				begin
 					sega <= 0;  //数据清零
 					segb <= 0;
 				end
-			else if(!calc)
-				begin
-					//输出计算结果
-				end
-			else if(!show)
-				begin
-					for( i=0; i<2; i=i+1)
-						begin
-						if(i == 0)
-							sega <= segdata1;//显示当前的数
-						else
-							segb <= segdata2;
-						end
-				end	
 				
 		end
 		
@@ -106,6 +114,49 @@ endmodule
 //endmodule
 //		
 		
+module full_adder_1 (
+input a,
+input b,
+input c_in,
+output sum,
+output c_out
+);
+wire S1, T1, T2, T3;
+
+xor x1 (S1, a, b);
+xor x2 (Sum, S1, c_in);
+and A1 (T3, a, b );
+and A2 (T2, b, c_in);
+and A3 (T1, a, c_in);
+or O1 (c_out, T1, T2, T3 );
+endmodule
+
+	
+	
+module add_4 ( 
+input [3:0]a, 
+input [3:0]b, 
+input c_in, 
+output [3:0] sum, 
+output c_out 
+); 
+wire [3:0] c_tmp; 
+
+full_adder_1 i0 ( a[0], b[0], c_in, sum[0], c_tmp[0]); 
+full_adder_1 i1 ( a[1], b[1], c_tmp[0], sum[1], c_tmp[1] );  
+full_adder_1 i2 ( a[2], b[2], c_tmp[1], sum[2], c_tmp[2] );  
+full_adder_1 i3 ( a[3], b[3], c_tmp[2], sum[3], c_tmp[3] );  
+assign c_out = c_tmp[3];
+endmodule
+
+	
+	
+	
+	
+	
+	
+	
+	
 		
 		
 		
