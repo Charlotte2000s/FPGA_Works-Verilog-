@@ -41,8 +41,8 @@ module full_adder(rst, clk, show, calc, sum, cnt, segdata, segled1, segled2);
 	
 	reg [8:0] seg [15:0]; 
 	
-	reg sega = 0;
-	reg segb = 0;
+	reg [3:0] sega = 0;
+	reg [3:0] segb = 0;
 	
 	//integer i;
 	integer value=2;
