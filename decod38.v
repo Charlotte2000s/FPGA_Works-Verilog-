@@ -4,7 +4,7 @@
 // File name    : decode38.v
 // Module name  : decode
 // Author       : Charlotte2000s
-// Description  : segment initial
+// Description  : decode38 initial
 // Web          : charlotte2000s.github.io
 // 
 // --------------------------------------------------------------------
@@ -15,12 +15,14 @@
 // --------------------------------------------------------------------
 // Module Function:实现38译码器功能 并实现全加器功能
 
-module decode38(led, sw);
+module decode38(led, cout, sum, sw);
 	input [2:0] sw;
 	output [7:0] led;
+	output cout;
+	output sum;
 	reg [7:0] led;
 	
-   always@(sw)
+   always@(sw)   //8个led灯默认为高电平,不亮
 			begin
 				case(sw)
 					3'b000: led=8'b0111_1111;
@@ -34,8 +36,12 @@ module decode38(led, sw);
 					default:;
 				endcase
 			end
+			
+	assign sum = ~(led[1]&led[2]&led[4]&led[7]);  //根据真值表可知
+	assign cout = ~(led[3]&led[5]&led[6]&led[7]); //根据真值表可知
 	
 endmodule
+
 
 
 
