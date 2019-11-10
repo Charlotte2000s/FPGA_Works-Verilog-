@@ -1,18 +1,25 @@
-module dff(clk, d, reset, q);
-
-input clk, d, reset;
-
-output q;
-
-reg q;
-
-always@(posedge clk)
-
-	begin 
-	if(reset)
-		q <= 1'b0; //时钟边沿到来且有复位信号，触发器被复位
-	else
-		q <= d;
-	end
+module dff(q,qn,D,clk,set_n,reset_n);
+	
+  input D,clk,set_n,reset_n;
+	
+  output q,qn;
+	
+  reg q,qn;
+	
+  always@(posedge clk)
+      begin
+	if(!reset_n)
+	    begin q <= 1'b0;
+		  qn <= 1'b1;
+	    end
+	else if(!set_n)
+	    begin q <= 1'b1;
+		  qn <= 1'b0;
+	    end
+	else 
+	    begin q <= D;
+		  qn <= ~D;
+	    end
+      end
 	
 endmodule
