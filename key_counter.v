@@ -1,90 +1,84 @@
-module key_counter(clk,key,rst,dig,seg);
-input clk;
-input rst;
+module key_counter(clk, rst, key, seg_led);
+
+input clk, rst;
 input key;
-output[7:0]	dig;						  
-output[7:0] seg;
 
-reg clk_1s;	//1s计数时钟信号
-reg clk_1ms;//1ms扫描时钟信号
-reg key_r;		//按键输入寄存器变量
-reg cntclk;		//动态扫描计数变量，根据此变量的值来选通位码和显示值
+output [8:0] seg_led;
 
-reg[3:0] unit; //个位数
-reg[3:0] decade;  //十位数
-reg[7:0] seg_r;//段码
-reg[7:0] dig_r;//位码
-reg[3:0] disp_dat;			
-reg[36:0] cnt_1s;//1Hz分频信号计数值
-reg[20:0] cnt_1ms;//1kHz分频信号计数值
-reg[4:0] cnt;//计数器计数值
+reg [3:0] seg_r=4'b0;
 
-assign dig = dig_r;
-assign seg = seg_r;
+reg [8:0] seg [15:0]; 
 
+key_debounce u1(.clk2(clk), .i_key(key), .o_key(key_1));
+key_debounce u2(.clk2(clk), .i_key(rst), .o_key(rst_n));
 
-always @(posedge clk)		//分频
+always@(negedge key_1 or negedge rst_n)
 begin
-  if(cnt_1s >=25000000) begin   cnt_1s <= 1'b0;  clk_1s = ~clk_1s;  end
-  else cnt_1s <= cnt_1s + 1'b1;	//计数分频
-  
-	if(cnt_1ms >= 50000)  begin	  cnt_1ms <= 1'b0;	clk_1k = ~clk_1k;	end
-	else cnt_1ms <= cnt_1ms + 1'b1;	//扫描分频
-end
-
-
-always @(posedge clk_1s or negedge rst)		//计数
-begin
-	key_r <= key;
-	if(!rst) 	cnt <= 0;		
-	else 
-		begin 
-		if(!key)  cnt <= 5'd8;		//是否按键清零
-		else if(cnt >= 5'd20) cnt <= 1'b0;		//是否到时间
-		else cnt <= cnt + 1'b1;		//计数加1
+	if(!rst_n)
+		begin
+			seg_r<=4'b0000;
 		end
+	else if(!key_1)
+	begin
+		if(seg_r>=4'b1111)
+			seg_r<=4'b0000;
+		else
+			seg_r<=seg_r+1'b1;
+	end
 end
+		
+       initial                                                         //在过程块中只能给reg型变量赋值，Verilog中有两种过程块always和initial
+                                                                        //initial和always不同，其中语句只执行一次
+	    begin
+         seg[0] = 9'h3f;                                           //对存储器中第一个数赋值9'b00_0011_1111,相当于共阴极接地，DP点变低不亮，7段显示数字0
+	      seg[1] = 9'h06;                                           //7段显示数字  1
+	      seg[2] = 9'h5b;                                           //7段显示数字  2
+	      seg[3] = 9'h4f;                                           //7段显示数字  3
+	      seg[4] = 9'h66;                                           //7段显示数字  4
+	      seg[5] = 9'h6d;                                           //7段显示数字  5
+	      seg[6] = 9'h7d;                                           //7段显示数字  6
+	      seg[7] = 9'h07;                                           //7段显示数字  7
+	      seg[8] = 9'h7f;                                           //7段显示数字  8
+	      seg[9] = 9'h6f;                                           //7段显示数字  9
+			seg[10] = 9'h77;                                          //7段显示数字  a	
+			seg[11] = 9'h7c;                                          //7段显示数字  b
+			seg[12] = 9'h39;                                          //7段显示数字  c
+			seg[13] = 9'h5e;                                          //7段显示数字  d
+			seg[14] = 9'h79;                                          //7段显示数字  e
+			seg[15] = 9'h71;                                          //7段显示数字  f
+       end
+	
 
+assign seg_led = seg[seg_r];		
+	
+endmodule
 
-always @(posedge clk_1s or negedge rst) 		//赋值
+module key_debounce        //消抖,输入k1,输出k
+(    input  clk2,
+    input  i_key,
+    output  o_key);
+reg r_key,  r_key_buf1, r_key_buf2;
+ 
+assign o_key = r_key;
+reg[15:0]cnt7;
+reg clk_100hz;
+always@(posedge clk2)   //12mhz分为100hz
 begin
-	if(!rst)		begin		unit <= 4'd0;		decade <= 4'd0;		end	//位数清零
-	else	begin		unit <= cnt % 10;	decade <= cnt / 10;		end	//位数赋值
+	if(cnt7<59999)      //12mhz/100hz=120000cnt<[1200002-1=59999
+cnt7=cnt7+1;
+else 
+begin 
+cnt7=0;
+clk_100hz=!clk_100hz; 
 end
-
-
-always @(posedge clk_1ms)		//选择扫描
+ end
+always@(posedge clk_100hz)
 begin
-	cntclk = cntclk + 1'b1;
-	case(cntclk)
-	1'b0: dig_r <= 8'b10111111;	//位选
-	1'b1: dig_r <= 8'b01111111;
-	default: dig_r <= 8'b11111111;
-	endcase
-	case(cntclk)
-	1'b0:disp_dat <= unit;
-	1'b1:disp_dat <= decade;
-	default:disp_dat = 4'h0;
-	endcase
+   r_key_buf1 <= i_key;
+   r_key_buf2 <= r_key_buf1;
+   if((r_key_buf1~^r_key_buf2) == 1'b1)    
+           r_key <= r_key_buf2;
+   else  
+           r_key<=0;
 end
-
-
-always @(disp_dat)
-begin
-	case(disp_dat)						 //段译码    
-		4'h0:seg_r = 8'hc0;				//显示0
-		4'h1:seg_r = 8'hf9;				//显示1
-		4'h2:seg_r = 8'ha4;				//显示2
-		4'h3:seg_r = 8'hb0;				//显示3
-		4'h4:seg_r = 8'h99;				//显示4
-		4'h5:seg_r = 8'h92;				//显示5
-		4'h6:seg_r = 8'h82;				//显示6
-		4'h7:seg_r = 8'hf8;				//显示7
-		4'h8:seg_r = 8'h80;				//显示8
-		4'h9:seg_r = 8'h90;				//显示9
-		default:seg_r = 8'hc0;		//显示0
-	endcase
-end
-
-endmodule 
-
+endmodule
